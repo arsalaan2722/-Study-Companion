@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Study Companion | Note & Summary Generator</title>
+    <meta name="description" content="Instantly transform documents, lectures, and raw text into organized study notes, summaries, and key points powered by LLaMA 3.3 70B.">
+    
+    <!-- Design System Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- CDN External Libraries for Client-side Document & Markdown Processing -->
+    <!-- Marked.js for Markdown Rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- PDF.js for PDF text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
+    <!-- Mammoth.js for DOCX text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
+    <!-- html2pdf.js for client-side PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <a href="#" class="sidebar-logo">
+                <span class="icon">🧠</span>
+                <span>Study Companion</span>
+            </a>
+            <div class="sidebar-section-title">YOUR WORKSPACE</div>
+            <ul class="nav-list">
+                <li class="nav-item active">
+                    <button type="button" data-tab="home">
+                        <span>🏠</span> Home Workspace
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" data-tab="features">
+                        <span>✨</span> Features
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" data-tab="history">
+                        <span>🕒</span> Note History
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" data-tab="about">
+                        <span>ℹ️</span> About App
+                    </button>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="theme-toggle-container">
+                    <span>🌙 Dark Theme</span>
+                    <label class="switch">
+                        <input type="checkbox" id="themeToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <button type="button" class="btn-api-settings" id="btnOpenApiModal">
+                    <span>🔑</span> Configure API Key
+                </button>
+            </div>
+        </aside>
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- Top Navbar -->
+            <header class="top-navbar">
+                <div class="page-title-display" id="pageTitleDisplay">Study Workspace</div>
+                <div class="top-nav-actions">
+                    <div class="api-status-badge demo-mode" id="apiStatusBadge">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Demo Mode Active</span>
+                    </div>
+                </div>
+            </header>
+            <!-- Page Views Wrapper -->
+            <div class="content-wrapper">
+                <!-- TAB 1: HOME WORKSPACE -->
+                <section class="tab-page active" id="tab-home">
+                    <div class="home-grid">
+                        
+                        <!-- Input Column -->
+                        <div class="input-card">
+                            <h2 class="section-heading">
+                                <span>📄</span> Source Material
+                            </h2>
+                            <!-- Dropzone File Upload -->
+                            <div class="dropzone" id="dropzone">
+                                <div class="dropzone-icon">📁</div>
+                                <div class="dropzone-text">Drop your PDF, DOCX, or TXT file here</div>
+                                <div class="dropzone-subtext">or click to browse files from your computer</div>
+                                <input type="file" id="fileInput" class="file-input" accept=".pdf,.docx,.txt">
+                            </div>
+                            <!-- File Uploaded Preview Badge -->
+                            <div class="file-preview-badge" id="filePreviewBadge">
+                                <span>📄 Selected File: <strong id="fileNameDisplay">document.pdf</strong></span>
+                                <button type="button" class="btn-remove-file" id="btnRemoveFile" title="Remove file">✖</button>
+                            </div>
+                            <!-- Manual Text Area -->
+                            <textarea id="manualTextArea" class="text-input-area" placeholder="Or paste your lecture notes, textbook excerpt, or topic summary here..."></textarea>
+                            <!-- Customization Options -->
+                            <div class="options-grid">
+                                <div>
+                                    <div class="options-column-title">COMPONENTS</div>
+                                    <div class="checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="checkSummary" checked>
+                                            <span>Executive Summary</span>
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="checkDetailed" checked>
+                                            <span>Detailed Notes</span>
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="checkKeywords" checked>
+                                            <span>Key Points & Keywords</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="options-column-title">NOTES STYLE</div>
+                                    <select id="selectStyle" class="select-style">
+                                        <option value="Academic Formal">Academic Formal</option>
+                                        <option value="Simple & Student Friendly" selected>Simple & Student Friendly</option>
+                                        <option value="Bullet Point Heavy">Bullet Point Heavy</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <!-- Generate Button -->
+                            <button type="button" class="btn-generate" id="btnGenerate">
+                                <span class="spinner" id="btnSpinner"></span>
+                                <span class="btn-text">✨ Generate Notes</span>
+                            </button>
+                        </div>
+                        <!-- Output Column -->
+                        <div class="output-card" id="outputCard">
+                            
+                            <!-- Initial Placeholder -->
+                            <div class="placeholder-state" id="placeholderState">
+                                <div class="placeholder-icon">📝</div>
+                                <h3>Your Generated Notes Will Appear Here</h3>
+                                <p>Upload a file or paste text on the left to start generating notes.</p>
+                            </div>
+                            <!-- Generated Output View -->
+                            <div class="output-content" id="outputContent">
+                                <span class="report-badge">AI Generated Study Report</span>
+                                <h1 class="report-title" id="reportTitle">Study Notes</h1>
+                                <!-- Summary Box -->
+                                <div class="summary-box" id="summaryBox">
+                                    <div class="summary-title">📄 Summary</div>
+                                    <div id="summaryText"></div>
+                                </div>
+                                <!-- Detailed Notes -->
+                                <div id="detailedNotesContainer">
+                                    <div class="markdown-section" id="detailedNotesContent"></div>
+                                </div>
+                                <!-- Key Points -->
+                                <div id="keyPointsContainer">
+                                    <div class="markdown-section" id="keyPointsContent"></div>
+                                </div>
+                                <!-- Export Toolbar -->
+                                <div class="export-toolbar">
+                                    <button type="button" class="btn-export primary-export" id="btnExportPdf">
+                                        <span>📄</span> Download PDF
+                                    </button>
+                                    <button type="button" class="btn-export" id="btnExportPpt">
+                                        <span>📊</span> Export PPT Outline
+                                    </button>
+                                    <button type="button" class="btn-export" id="btnCopyTxt">
+                                        <span>📋</span> Copy Text
+                                    </button>
+                                    <button type="button" class="btn-export" id="btnDownloadTxt">
+                                        <span>💾</span> Save TXT
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <!-- TAB 2: FEATURES -->
+                <section class="tab-page" id="tab-features">
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon">📚</div>
+                            <h3 class="feature-title">Smart Summarization</h3>
+                            <p class="feature-desc">Condense long lectures, research papers, or textbooks into clear, bite-sized summaries in seconds.</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">📝</div>
+                            <h3 class="feature-title">Structured Study Notes</h3>
+                            <p class="feature-desc">Automatically transform messy text into highly organized, beautifully formatted notes with headings and bullet points.</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🔑</div>
+                            <h3 class="feature-title">Keyword Extraction</h3>
+                            <p class="feature-desc">Instantly identify essential terms and core concepts for rapid flashcard creation and reviewing.</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">📄</div>
+                            <h3 class="feature-title">Multi-Format Document Parsing</h3>
+                            <p class="feature-desc">Drag and drop PDFs, Microsoft Word documents (.docx), or plain text files (.txt) directly into your workspace.</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">⚡</div>
+                            <h3 class="feature-title">Powered by Groq LLaMA 3.3</h3>
+                            <p class="feature-desc">Lightning-fast inference speed utilizing state-of-the-art 70B parameter open AI models.</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🌙</div>
+                            <h3 class="feature-title">Dynamic Dark Theme</h3>
+                            <p class="feature-desc">Designed for late-night study sessions with sleek dark mode contrast and modern UI aesthetics.</p>
+                        </div>
+                    </div>
+                </section>
+                <!-- TAB 3: HISTORY -->
+                <section class="tab-page" id="tab-history">
+                    <div class="history-list" id="historyList">
+                        <!-- History Items Rendered via JavaScript -->
+                    </div>
+                </section>
+                <!-- TAB 4: ABOUT -->
+                <section class="tab-page" id="tab-about">
+                    <div class="about-card">
+                        <h2>About Study Companion</h2>
+                        <br>
+                        <p><b>Study Companion</b> is a modern, high-productivity educational web application built to help students, researchers, and self-learners digest complex documents faster.</p>
+                        <p>Equipped with instant client-side file extraction (PDF, DOCX, TXT) and powered by <b>Groq LLaMA 3.3 70B</b> AI, it transforms hours of reading into structured, actionable study materials within seconds.</p>
+                        <p>Features include multi-style note generation, client-side PDF export, slide layout outlines, and persistent session history stored securely in your browser.</p>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <!-- API Key Configuration Modal -->
+    <div class="modal-overlay" id="apiModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 class="modal-title">🔑 Configure Groq API Key</h3>
+                <button type="button" class="btn-close-modal" id="btnCloseApiModal">✖</button>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                Enter your Groq API Key to enable live AI generation using <b>llama-3.3-70b-versatile</b>. Leave blank to run in instant Demo Mode.
+            </p>
+            <input type="password" id="apiKeyInput" class="api-input-field" placeholder="gsk_..." autocomplete="off">
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" class="btn-export primary-export" id="btnSaveApiKey" style="padding: 10px 20px;">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    <!-- Application Script -->
+    <script src="script.js"></script>
+</body>
+</html>
