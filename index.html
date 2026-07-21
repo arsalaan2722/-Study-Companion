@@ -4,21 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Study Companion | Note & Summary Generator</title>
-    <meta name="description" content="Instantly transform documents, lectures, and raw text into organized study notes, summaries, and key points powered by LLaMA 3.3 70B.">
+    <meta name="description" content="Instantly transform documents, lectures, and raw text into organized study notes, summaries, and key points powered by LLaMA 3.3 70B. Features interactive 3D flashcards, audio reader, and multi-format document parsing.">
     
+    <!-- Open Graph SEO Metadata for Deployment (GitHub Pages / Vercel / Netlify) -->
+    <meta property="og:title" content="AI Study Companion - Intelligent Note Generator">
+    <meta property="og:description" content="Turn lectures, research papers, and documents into structured notes, flashcards, and summaries instantly.">
+    <meta property="og:type" content="website">
+    <!-- Inline Brain SVG Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
     <!-- Design System Stylesheet -->
     <link rel="stylesheet" href="style.css">
     <!-- CDN External Libraries for Client-side Document & Markdown Processing -->
-    <!-- Marked.js for Markdown Rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- PDF.js for PDF text extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
     </script>
-    <!-- Mammoth.js for DOCX text extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
-    <!-- html2pdf.js for client-side PDF export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -71,7 +73,10 @@
             
             <!-- Top Navbar -->
             <header class="top-navbar">
-                <div class="page-title-display" id="pageTitleDisplay">Study Workspace</div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle Navigation">☰</button>
+                    <div class="page-title-display" id="pageTitleDisplay">Study Workspace</div>
+                </div>
                 <div class="top-nav-actions">
                     <div class="api-status-badge demo-mode" id="apiStatusBadge">
                         <span class="status-dot"></span>
@@ -87,14 +92,20 @@
                         
                         <!-- Input Column -->
                         <div class="input-card">
-                            <h2 class="section-heading">
-                                <span>📄</span> Source Material
-                            </h2>
+                            <div class="section-heading">
+                                <span>📄 Source Material</span>
+                                <div class="samples-container">
+                                    <span class="sample-label">Try sample:</span>
+                                    <button type="button" class="sample-pill" data-sample="physics">⚛️ Physics</button>
+                                    <button type="button" class="sample-pill" data-sample="cs">💻 CS</button>
+                                    <button type="button" class="sample-pill" data-sample="biology">🌿 Biology</button>
+                                </div>
+                            </div>
                             <!-- Dropzone File Upload -->
                             <div class="dropzone" id="dropzone">
                                 <div class="dropzone-icon">📁</div>
-                                <div class="dropzone-text">Drop your PDF, DOCX, or TXT file here</div>
-                                <div class="dropzone-subtext">or click to browse files from your computer</div>
+                                <div class="dropzone-text">Drop PDF, DOCX, or TXT file here</div>
+                                <div class="dropzone-subtext">or click to browse files from your device</div>
                                 <input type="file" id="fileInput" class="file-input" accept=".pdf,.docx,.txt">
                             </div>
                             <!-- File Uploaded Preview Badge -->
@@ -102,8 +113,11 @@
                                 <span>📄 Selected File: <strong id="fileNameDisplay">document.pdf</strong></span>
                                 <button type="button" class="btn-remove-file" id="btnRemoveFile" title="Remove file">✖</button>
                             </div>
-                            <!-- Manual Text Area -->
-                            <textarea id="manualTextArea" class="text-input-area" placeholder="Or paste your lecture notes, textbook excerpt, or topic summary here..."></textarea>
+                            <!-- Manual Text Area & Word Counter -->
+                            <div class="textarea-wrapper">
+                                <textarea id="manualTextArea" class="text-input-area" placeholder="Or paste your lecture notes, textbook excerpt, or study topic here..."></textarea>
+                                <div class="word-count-badge" id="wordCountBadge">0 words • 0 min read</div>
+                            </div>
                             <!-- Customization Options -->
                             <div class="options-grid">
                                 <div>
@@ -132,6 +146,13 @@
                                     </select>
                                 </div>
                             </div>
+                            <!-- Progress Animation Bar -->
+                            <div class="progress-container" id="progressContainer">
+                                <div class="progress-track">
+                                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                                </div>
+                                <div class="progress-status-text" id="progressStatusText">Analyzing source material...</div>
+                            </div>
                             <!-- Generate Button -->
                             <button type="button" class="btn-generate" id="btnGenerate">
                                 <span class="spinner" id="btnSpinner"></span>
@@ -145,11 +166,50 @@
                             <div class="placeholder-state" id="placeholderState">
                                 <div class="placeholder-icon">📝</div>
                                 <h3>Your Generated Notes Will Appear Here</h3>
-                                <p>Upload a file or paste text on the left to start generating notes.</p>
+                                <p>Upload a file or paste text on the left, or click one of the quick samples above.</p>
                             </div>
                             <!-- Generated Output View -->
                             <div class="output-content" id="outputContent">
-                                <span class="report-badge">AI Generated Study Report</span>
+                                <div class="output-header-bar">
+                                    <span class="report-badge">AI Generated Report</span>
+                                    
+                                    <!-- Interactive Study Tools Bar -->
+                                    <div class="study-tools-bar">
+                                        <button type="button" class="tool-btn" id="btnAudioReader" title="Listen to notes read out loud">
+                                            <span>🔊</span> <span>Audio Read</span>
+                                        </button>
+                                        <button type="button" class="tool-btn" id="btnToggleFlashcards" title="Practice with 3D Flashcards">
+                                            <span>🃏</span> <span>Flashcards</span>
+                                        </button>
+                                        <button type="button" class="tool-btn" id="btnToggleSearch" title="Search inside notes">
+                                            <span>🔍</span> <span>Search</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- In-Notes Search Bar -->
+                                <div class="search-notes-bar" id="searchNotesBar">
+                                    <input type="text" id="searchNotesInput" class="search-notes-input" placeholder="Type keyword to highlight in notes...">
+                                </div>
+                                <!-- 3D Interactive Flashcards View -->
+                                <div class="flashcards-container" id="flashcardsContainer">
+                                    <div class="flashcard" id="flashcardElem">
+                                        <div class="flashcard-inner">
+                                            <div class="flashcard-front">
+                                                <div class="flashcard-badge">KEY TERM (CLICK TO FLIP)</div>
+                                                <div class="flashcard-text" id="flashcardFront">Quantum Physics</div>
+                                            </div>
+                                            <div class="flashcard-back">
+                                                <div class="flashcard-badge">DEFINITION</div>
+                                                <div class="flashcard-text" id="flashcardBack">Study of subatomic particles and wave mechanics.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flashcard-controls">
+                                        <button type="button" class="btn-card-nav" id="btnPrevCard">◀ Prev Card</button>
+                                        <span id="cardCounter" style="font-size: 13px; font-weight: 700; color: var(--text-muted);">1 / 1</span>
+                                        <button type="button" class="btn-card-nav" id="btnNextCard">Next Card ▶</button>
+                                    </div>
+                                </div>
                                 <h1 class="report-title" id="reportTitle">Study Notes</h1>
                                 <!-- Summary Box -->
                                 <div class="summary-box" id="summaryBox">
@@ -192,14 +252,14 @@
                             <p class="feature-desc">Condense long lectures, research papers, or textbooks into clear, bite-sized summaries in seconds.</p>
                         </div>
                         <div class="feature-card">
-                            <div class="feature-icon">📝</div>
-                            <h3 class="feature-title">Structured Study Notes</h3>
-                            <p class="feature-desc">Automatically transform messy text into highly organized, beautifully formatted notes with headings and bullet points.</p>
+                            <div class="feature-icon">🃏</div>
+                            <h3 class="feature-title">3D Interactive Flashcards</h3>
+                            <p class="feature-desc">Automatically converts key terms into flip flashcards for interactive self-testing and rapid revision.</p>
                         </div>
                         <div class="feature-card">
-                            <div class="feature-icon">🔑</div>
-                            <h3 class="feature-title">Keyword Extraction</h3>
-                            <p class="feature-desc">Instantly identify essential terms and core concepts for rapid flashcard creation and reviewing.</p>
+                            <div class="feature-icon">🔊</div>
+                            <h3 class="feature-title">Text-to-Speech Audio Reader</h3>
+                            <p class="feature-desc">Listen to your generated study summaries and notes out loud with built-in voice synthesis.</p>
                         </div>
                         <div class="feature-card">
                             <div class="feature-icon">📄</div>
@@ -231,7 +291,7 @@
                         <br>
                         <p><b>Study Companion</b> is a modern, high-productivity educational web application built to help students, researchers, and self-learners digest complex documents faster.</p>
                         <p>Equipped with instant client-side file extraction (PDF, DOCX, TXT) and powered by <b>Groq LLaMA 3.3 70B</b> AI, it transforms hours of reading into structured, actionable study materials within seconds.</p>
-                        <p>Features include multi-style note generation, client-side PDF export, slide layout outlines, and persistent session history stored securely in your browser.</p>
+                        <p>Features include multi-style note generation, 3D flip flashcards, text-to-speech audio reader, client-side PDF export, slide layout outlines, and persistent session history stored securely in your browser.</p>
                     </div>
                 </section>
             </div>
